@@ -10,6 +10,7 @@ const statusBox = document.getElementById("status");
 const gallery = document.getElementById("gallery");
 const template = document.getElementById("card-template");
 const sentinel = document.getElementById("scroll-sentinel");
+const resetFiltersBtn = document.getElementById("reset-filters");
 const exportJsonBtn = document.getElementById("export-json");
 const exportCsvBtn = document.getElementById("export-csv");
 const saveCollectionBtn = document.getElementById("save-collection");
@@ -103,6 +104,19 @@ function updateSentinel() {
       : "";
 }
 
+function hasActiveFilters() {
+  return Boolean(state.filters.orientation || state.filters.license || state.filters.source);
+}
+
+function clearFilterInputs() {
+  orientationInput.value = "";
+  licenseInput.value = "";
+  sourceInput.value = "";
+  state.filters.orientation = "";
+  state.filters.license = "";
+  state.filters.source = "";
+}
+
 function buildSearchUrl() {
   const params = new URLSearchParams();
   params.set("q", state.query);
@@ -122,7 +136,7 @@ function buildSearchUrl() {
   return `/search?${params.toString()}`;
 }
 
-async function performSearch({ append }) {
+async function performSearch({ append, allowUnfilteredRetry = false }) {
   if (state.loading) {
     return;
   }
@@ -153,6 +167,12 @@ async function performSearch({ append }) {
     if (!Array.isArray(data.results)) {
       if (!append) {
         clearResults();
+      }
+      if (!append && allowUnfilteredRetry && hasActiveFilters()) {
+        clearFilterInputs();
+        setStatus("No hits with active filters. Retrying without filters...");
+        await performSearch({ append: false, allowUnfilteredRetry: false });
+        return;
       }
       state.hasMore = false;
       updateSentinel();
@@ -366,13 +386,17 @@ form.addEventListener("submit", async (event) => {
 
   clearResults();
   updateSentinel();
-  await performSearch({ append: false });
+  await performSearch({ append: false, allowUnfilteredRetry: true });
 });
 
 exportJsonBtn.addEventListener("click", () => exportResults("json"));
 exportCsvBtn.addEventListener("click", () => exportResults("csv"));
 saveCollectionBtn.addEventListener("click", () => {
   saveCollection().catch(() => setStatus("Failed to save collection.", true));
+});
+resetFiltersBtn.addEventListener("click", () => {
+  clearFilterInputs();
+  setStatus("Filters reset.");
 });
 
 collectionsList.addEventListener("click", (event) => {
