@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Protocol
 from urllib.parse import urlsplit, urlunsplit
+import re
 
 from picturescraper.models import ImageResult, QueryAnalysis, SearchFilters, SearchOutput
 from picturescraper.query import analyze_query
@@ -89,13 +90,27 @@ class PictureSearchService:
         deduped = filter_and_deduplicate(all_results)
         constrained = apply_filters(deduped, active_filters)
         ranked = sort_by_quality(constrained)
+        entity_based, exact_entity_match = prioritize_entity_matches(ranked, analysis.entities)
+        used_relaxed_fallback = False
+        if entity_based:
+            ranked = entity_based
+            if not exact_entity_match:
+                used_relaxed_fallback = True
+        elif ranked:
+            used_relaxed_fallback = True
 
         total_results = len(ranked)
         start = (page - 1) * limit
         end = start + limit
         final_results = ranked[start:end]
 
-        reasoning = build_reasoning(analysis, len(used_sources), used_sources, active_filters)
+        reasoning = build_reasoning(
+            analysis,
+            len(used_sources),
+            used_sources,
+            active_filters,
+            used_relaxed_fallback=used_relaxed_fallback,
+        )
         if not final_results:
             return SearchOutput(
                 reasoning_steps=reasoning,
@@ -182,6 +197,7 @@ def build_reasoning(
     n_sources: int,
     source_names: list[str],
     filters: SearchFilters,
+    used_relaxed_fallback: bool = False,
 ) -> str:
     date_text = (
         f"{analysis.date_range[0]}-{analysis.date_range[1]}"
@@ -199,14 +215,49 @@ def build_reasoning(
     )
     filters_text = ", ".join([p for p in filters_text.split(", ") if p]) or "none"
 
+    tail = (
+        "No exact multi-entity match was found; showing related results from relaxed matching."
+        if used_relaxed_fallback
+        else "Prioritized results that match core query entities."
+    )
+
     return (
         "Analyzed query for entities and optional dates. "
         f"Entities: {analysis.entities}. Date range: {date_text}. "
         f"Generated keyword variations such as {keyword_examples}. "
         f"Searched {n_sources} source(s): {source_text}. "
         f"Applied filters: {filters_text}. "
-        "Deduplicated by URL and ranked by basic quality signals."
+        f"Deduplicated by URL and ranked by basic quality signals. {tail}"
     )
+
+
+def prioritize_entity_matches(results: list[ImageResult], entities: list[str]) -> tuple[list[ImageResult], bool]:
+    core = [e.lower() for e in entities if len(e) >= 3]
+    if not core:
+        return (results, True)
+
+    merged = {f"{core[i]}{core[i + 1]}" for i in range(len(core) - 1)}
+    needed = 1 if len(core) == 1 else 2
+
+    strict: list[tuple[int, ImageResult]] = []
+    loose: list[tuple[int, ImageResult]] = []
+    for item in results:
+        hay = f"{item.title_or_alt} {item.page_url} {item.image_url} {item.source_name}".lower()
+        token_hits = sum(1 for token in core if re.search(rf"\b{re.escape(token)}\b", hay))
+        merged_hit = any(m in hay for m in merged)
+        score = token_hits + (2 if merged_hit else 0)
+        if token_hits >= needed or merged_hit:
+            strict.append((score, item))
+        elif score > 0:
+            loose.append((score, item))
+
+    if strict:
+        strict.sort(key=lambda pair: pair[0], reverse=True)
+        return ([item for _, item in strict], True)
+    if loose:
+        loose.sort(key=lambda pair: pair[0], reverse=True)
+        return ([item for _, item in loose], False)
+    return ([], False)
 
 
 def to_json_dict(output: SearchOutput) -> dict:
