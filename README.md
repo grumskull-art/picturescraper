@@ -1,6 +1,6 @@
 # PictureScraper
 
-Image search app that analyzes a free-text query, expands keywords, searches Openverse, deduplicates results, and returns reasoning + structured JSON.
+Image search app that analyzes a free-text query, expands keywords, searches Openverse, and when needed performs Denmark-focused web scraping from curated Danish sources.
 
 ## Features
 - Query analysis: entities + year or year-range extraction
@@ -8,6 +8,11 @@ Image search app that analyzes a free-text query, expands keywords, searches Ope
   - `license` substring filter
   - `source` substring filter
   - `orientation` (`landscape|portrait|square`)
+- Denmark-focused fallback scraping from curated sources:
+  - `skagensavis.dk`
+  - `tv2nord.dk`
+  - `nordjyske.dk`
+  - `dr.dk`
 - Pagination support for infinite scroll UX
 - Export current results as JSON or CSV
 - Save and reload collections locally (`data/collections.json` by default)

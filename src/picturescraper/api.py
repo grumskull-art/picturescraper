@@ -8,9 +8,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from picturescraper.clients.bing_images import BingImagesClient
+from picturescraper.clients.danish_sources import DanishSourcesClient
 from picturescraper.clients.openverse import OpenverseClient
-from picturescraper.clients.web_fallback import WebFallbackClient
 from picturescraper.config import settings
 from picturescraper.models import SearchFilters
 from picturescraper.service import PictureSearchService, to_json_dict
@@ -34,12 +33,10 @@ def build_service() -> PictureSearchService:
         endpoint=settings.openverse_endpoint,
         timeout_seconds=settings.request_timeout_seconds,
     )
-    bing_images = BingImagesClient(timeout_seconds=settings.request_timeout_seconds)
-    web_fallback = WebFallbackClient(timeout_seconds=settings.request_timeout_seconds)
+    danish_web = DanishSourcesClient(timeout_seconds=settings.request_timeout_seconds)
     return PictureSearchService(
         openverse_client=openverse,
-        bing_images_client=bing_images,
-        web_fallback_client=web_fallback,
+        danish_web_client=danish_web,
     )
 
 
