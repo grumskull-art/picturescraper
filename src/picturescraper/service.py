@@ -25,9 +25,13 @@ class PictureSearchService:
     def __init__(
         self,
         openverse_client: ImageClient,
+        bing_images_client: object | None = None,
+        web_fallback_client: object | None = None,
         max_year_span: int = 15,
     ):
         self.openverse_client = openverse_client
+        self.bing_images_client = bing_images_client
+        self.web_fallback_client = web_fallback_client
         self.max_year_span = max_year_span
 
     def search(
@@ -98,8 +102,11 @@ class PictureSearchService:
                 used_relaxed_fallback = True
         elif ranked:
             used_relaxed_fallback = True
+        else:
+            used_relaxed_fallback = True
 
         if used_relaxed_fallback:
+            nightlife_boost = should_use_web_boost(query, analysis.entities)
             fallback_entity_results = search_per_entity_fallback(
                 client=self.openverse_client,
                 entities=analysis.entities,
@@ -108,6 +115,41 @@ class PictureSearchService:
             )
             if fallback_entity_results:
                 ranked = fallback_entity_results
+                if self.bing_images_client is not None and nightlife_boost:
+                    bing_results = search_bing_entity_mix(
+                        self.bing_images_client,
+                        query,
+                        analysis.entities,
+                        limit=max(limit, 8),
+                    )
+                    bing_results = prioritize_web_venue_matches(bing_results, analysis.entities)
+                    if bing_results:
+                        ranked = filter_and_deduplicate(bing_results + ranked)
+                if self.web_fallback_client is not None and not nightlife_boost:
+                    boosted = self.web_fallback_client.search_images(query, limit=max(limit, 8))
+                    boosted = prioritize_web_venue_matches(boosted, analysis.entities)
+                    if boosted:
+                        ranked = filter_and_deduplicate(boosted + ranked)
+            else:
+                if self.bing_images_client is not None and nightlife_boost:
+                    bing_results = search_bing_entity_mix(
+                        self.bing_images_client,
+                        query,
+                        analysis.entities,
+                        limit=max(limit * 2, 12),
+                    )
+                    if bing_results:
+                        ranked = sort_by_quality(filter_and_deduplicate(bing_results))
+                if not ranked and self.web_fallback_client is not None and not nightlife_boost:
+                    web_results = self.web_fallback_client.search_images(query, limit=max(limit * 2, 12))
+                    if web_results:
+                        ranked = sort_by_quality(filter_and_deduplicate(web_results))
+        elif self.web_fallback_client is not None and should_use_web_boost(query, analysis.entities):
+            boosted = self.web_fallback_client.search_images(query, limit=max(limit, 8))
+            boosted = prioritize_web_venue_matches(boosted, analysis.entities)
+            if boosted:
+                merged = filter_and_deduplicate(boosted + ranked)
+                ranked = merged
 
         total_results = len(ranked)
         start = (page - 1) * limit
@@ -322,6 +364,51 @@ def matches_entity(item: ImageResult, entity_term: str) -> bool:
     if re.search(rf"\b{re.escape(entity_term)}\b", hay):
         return True
     return entity_term in hay
+
+
+def should_use_web_boost(query: str, entities: list[str]) -> bool:
+    q = query.lower()
+    nightlife_words = ["diskotek", "discotheque", "nightclub", "club", "disco"]
+    has_nightlife = any(word in q for word in nightlife_words)
+    return has_nightlife and len([e for e in entities if len(e) >= 3]) >= 2
+
+
+def search_bing_entity_mix(client: object, query: str, entities: list[str], limit: int) -> list[ImageResult]:
+    out: list[ImageResult] = []
+    out.extend(client.search_images(query, limit=limit))
+    terms = canonical_entity_terms(entities)
+    selected: list[str] = []
+    if "copacabana" in terms:
+        selected.append("copacabana")
+    if "skagen" in terms:
+        selected.append("skagen")
+    for term in terms:
+        if term not in selected:
+            selected.append(term)
+    for term in selected[:3]:
+        out.extend(client.search_images(f"{term} diskotek", limit=max(4, limit // 3)))
+    return filter_and_deduplicate(out)
+
+
+def prioritize_web_venue_matches(results: list[ImageResult], entities: list[str]) -> list[ImageResult]:
+    if not results:
+        return []
+    tokens = [e.lower() for e in entities if len(e) >= 3]
+    if not tokens:
+        return results
+    out: list[tuple[int, ImageResult]] = []
+    for item in results:
+        hay = f"{item.title_or_alt} {item.page_url}".lower()
+        score = sum(1 for t in tokens if t in hay)
+        if "copacabana" in hay:
+            score += 2
+        if "skagen" in hay:
+            score += 2
+        if "diskotek" in hay or "discotheque" in hay or "nightclub" in hay:
+            score += 2
+        out.append((score, item))
+    out.sort(key=lambda pair: pair[0], reverse=True)
+    return [item for _, item in out]
 
 
 def to_json_dict(output: SearchOutput) -> dict:

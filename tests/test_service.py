@@ -133,3 +133,74 @@ def test_service_entity_fallback_returns_real_terms() -> None:
     urls = [r.image_url for r in out.results]
     assert "https://img.example.com/copacabana.jpg" in urls
     assert "https://img.example.com/skagen.jpg" in urls
+
+
+class FakeOpenverseEmpty:
+    def search_images(
+        self,
+        keyword: str,
+        per_keyword_limit: int = 10,
+        page: int = 1,
+        license_code: str | None = None,
+        source: str | None = None,
+    ):
+        return []
+
+
+class FakeWebFallback:
+    def search_images(self, query: str, limit: int = 8):
+        return [
+            ImageResult(
+                image_url="https://img.example.com/web.jpg",
+                page_url="https://example.com/event",
+                title_or_alt="Diskotek Copacabana i Skagen",
+                source_name="web",
+                date_if_available="",
+                license="unknown",
+                width=1200,
+                height=800,
+            )
+        ]
+
+
+def test_service_uses_web_fallback_when_openverse_empty() -> None:
+    class FakeBingEmpty:
+        def search_images(self, query: str, limit: int = 8):
+            return []
+
+    service = PictureSearchService(
+        openverse_client=FakeOpenverseEmpty(),
+        bing_images_client=FakeBingEmpty(),
+        web_fallback_client=FakeWebFallback(),
+    )
+    out = service.search("mountain sunset", limit=10)
+
+    assert isinstance(out.results, list)
+    assert out.results[0].source_name == "web"
+
+
+def test_service_prefers_bing_images_for_nightlife_queries() -> None:
+    class FakeBing:
+        def search_images(self, query: str, limit: int = 8):
+            return [
+                ImageResult(
+                    image_url="https://img.example.com/bing.jpg",
+                    page_url="https://example.com/copacabana-skagen-night",
+                    title_or_alt="Diskotek Copacabana Skagen",
+                    source_name="bing-images",
+                    date_if_available="",
+                    license="unknown",
+                    width=1600,
+                    height=900,
+                )
+            ]
+
+    service = PictureSearchService(
+        openverse_client=FakeOpenverseEmpty(),
+        bing_images_client=FakeBing(),
+        web_fallback_client=FakeWebFallback(),
+    )
+    out = service.search("diskotek Copacabana Skagen", limit=10)
+
+    assert isinstance(out.results, list)
+    assert out.results[0].source_name == "bing-images"
