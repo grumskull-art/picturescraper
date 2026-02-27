@@ -36,6 +36,7 @@ class PictureSearchService:
         page: int = 1,
         per_keyword_limit: int = 20,
         filters: SearchFilters | None = None,
+        max_keyword_calls: int = 6,
     ) -> SearchOutput:
         analysis = analyze_query(query, max_year_span=self.max_year_span)
         active_filters = filters or SearchFilters()
@@ -53,12 +54,31 @@ class PictureSearchService:
         all_results: list[ImageResult] = []
         used_sources: list[str] = []
 
-        for keyword in analysis.keywords:
+        target_pool_size = max(limit * page * 2, limit)
+        primary_keywords = analysis.keywords[:max_keyword_calls]
+        fallback_keywords = analysis.keywords[max_keyword_calls : max_keyword_calls + 2]
+
+        for keyword in primary_keywords:
             for openverse_page in range(1, page + 1):
                 ov_results = self.openverse_client.search_images(
                     keyword,
                     per_keyword_limit=per_keyword_limit,
                     page=openverse_page,
+                    license_code=active_filters.license,
+                    source=active_filters.source,
+                )
+                if ov_results and "Openverse" not in used_sources:
+                    used_sources.append("Openverse")
+                all_results.extend(ov_results)
+            if len(all_results) >= target_pool_size:
+                break
+
+        if not all_results:
+            for keyword in fallback_keywords:
+                ov_results = self.openverse_client.search_images(
+                    keyword,
+                    per_keyword_limit=per_keyword_limit,
+                    page=1,
                     license_code=active_filters.license,
                     source=active_filters.source,
                 )

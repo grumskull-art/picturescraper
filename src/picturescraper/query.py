@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from itertools import combinations
 
 from picturescraper.models import QueryAnalysis
 
@@ -44,17 +45,66 @@ def generate_search_keywords(
     date_range: tuple[int, int] | None,
     max_year_span: int = 15,
 ) -> list[str]:
-    base = " ".join(entities).strip()
+    clean_entities = [e.strip() for e in entities if e.strip()]
+    base = " ".join(clean_entities).strip()
     if not base:
         return []
 
-    if date_range is None:
-        return [base]
+    phrase_variants = _build_phrase_variants(clean_entities)
+    years = _sample_years(date_range, max_year_span=max_year_span)
 
+    out: list[str] = list(phrase_variants)
+    for phrase in phrase_variants[:4]:
+        for year in years:
+            out.append(f"{phrase} {year}")
+
+    # Keep API calls bounded.
+    return _dedupe_preserve_order(out)[:16]
+
+
+def _build_phrase_variants(entities: list[str]) -> list[str]:
+    variants = [" ".join(entities)]
+
+    # Single-entity fallbacks can rescue difficult combined queries.
+    if len(entities) > 1:
+        variants.extend(entities)
+
+    if len(entities) >= 2:
+        # Add short pairwise combinations to avoid over-constrained multi-entity queries.
+        for left, right in combinations(entities, 2):
+            variants.append(f"{left} {right}")
+
+        # Add merged adjacent tokens (e.g. "copa cabana" -> "copacabana").
+        for i in range(len(entities) - 1):
+            merged = entities.copy()
+            merged[i : i + 2] = [f"{entities[i]}{entities[i + 1]}"]
+            variants.append(" ".join(merged))
+            variants.append(f"{entities[i]}{entities[i + 1]}")
+
+    return _dedupe_preserve_order(variants)
+
+
+def _sample_years(date_range: tuple[int, int] | None, max_year_span: int) -> list[int]:
+    if date_range is None:
+        return []
     start, end = date_range
     span = end - start + 1
     if span <= max_year_span:
-        return [f"{base} {year}" for year in range(start, end + 1)]
-
+        return list(range(start, end + 1))
     middle = start + (end - start) // 2
-    return [f"{base} {start}", f"{base} {middle}", f"{base} {end}", base]
+    return [start, middle, end]
+
+
+def _dedupe_preserve_order(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in items:
+        clean = " ".join(item.split())
+        if not clean:
+            continue
+        low = clean.lower()
+        if low in seen:
+            continue
+        seen.add(low)
+        out.append(clean)
+    return out
