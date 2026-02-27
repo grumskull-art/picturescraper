@@ -82,3 +82,54 @@ def test_service_applies_filters_and_pagination() -> None:
     assert len(out.results) == 1
     assert out.results[0].image_url == "https://img.example.com/b.jpg"
     assert out.total_results == 2
+
+
+class FakeOpenverseEntityFallback:
+    def search_images(
+        self,
+        keyword: str,
+        per_keyword_limit: int = 10,
+        page: int = 1,
+        license_code: str | None = None,
+        source: str | None = None,
+    ):
+        k = keyword.lower()
+        if "copa cabana skagen" in k:
+            return []
+        if "copacabana" in k:
+            return [
+                ImageResult(
+                    image_url="https://img.example.com/copacabana.jpg",
+                    page_url="https://example.com/copacabana",
+                    title_or_alt="Copacabana beach",
+                    source_name="wikimedia",
+                    date_if_available="2001",
+                    license="by-sa",
+                    width=2000,
+                    height=1200,
+                )
+            ]
+        if "skagen" in k:
+            return [
+                ImageResult(
+                    image_url="https://img.example.com/skagen.jpg",
+                    page_url="https://example.com/skagen",
+                    title_or_alt="Skagen coast",
+                    source_name="wikimedia",
+                    date_if_available="2003",
+                    license="by",
+                    width=1800,
+                    height=1200,
+                )
+            ]
+        return []
+
+
+def test_service_entity_fallback_returns_real_terms() -> None:
+    service = PictureSearchService(openverse_client=FakeOpenverseEntityFallback())
+    out = service.search("Copa cabana skagen 1994-2010", limit=10)
+
+    assert isinstance(out.results, list)
+    urls = [r.image_url for r in out.results]
+    assert "https://img.example.com/copacabana.jpg" in urls
+    assert "https://img.example.com/skagen.jpg" in urls

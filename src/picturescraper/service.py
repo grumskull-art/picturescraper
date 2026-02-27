@@ -99,6 +99,16 @@ class PictureSearchService:
         elif ranked:
             used_relaxed_fallback = True
 
+        if used_relaxed_fallback:
+            fallback_entity_results = search_per_entity_fallback(
+                client=self.openverse_client,
+                entities=analysis.entities,
+                per_keyword_limit=per_keyword_limit,
+                filters=active_filters,
+            )
+            if fallback_entity_results:
+                ranked = fallback_entity_results
+
         total_results = len(ranked)
         start = (page - 1) * limit
         end = start + limit
@@ -258,6 +268,60 @@ def prioritize_entity_matches(results: list[ImageResult], entities: list[str]) -
         loose.sort(key=lambda pair: pair[0], reverse=True)
         return ([item for _, item in loose], False)
     return ([], False)
+
+
+def search_per_entity_fallback(
+    client: ImageClient,
+    entities: list[str],
+    per_keyword_limit: int,
+    filters: SearchFilters,
+) -> list[ImageResult]:
+    terms = canonical_entity_terms(entities)
+    if not terms:
+        return []
+
+    collected: list[ImageResult] = []
+    for term in terms[:3]:
+        chunk = client.search_images(
+            term,
+            per_keyword_limit=max(8, per_keyword_limit // 2),
+            page=1,
+            license_code=filters.license,
+            source=filters.source,
+        )
+        strict = [item for item in chunk if matches_entity(item, term)]
+        collected.extend(strict[:8])
+
+    deduped = filter_and_deduplicate(collected)
+    constrained = apply_filters(deduped, filters)
+    return sort_by_quality(constrained)
+
+
+def canonical_entity_terms(entities: list[str]) -> list[str]:
+    clean = [e.strip().lower() for e in entities if len(e.strip()) >= 3]
+    if not clean:
+        return []
+
+    # Domain-specific normalization for common split spellings.
+    compounds = {"copa cabana": "copacabana"}
+    phrase = " ".join(clean)
+    terms: list[str] = []
+    consumed_tokens: set[str] = set()
+    for source, target in compounds.items():
+        if source in phrase:
+            terms.append(target)
+            for token in source.split():
+                consumed_tokens.add(token)
+
+    terms.extend([t for t in clean if t not in consumed_tokens])
+    return list(dict.fromkeys(terms))
+
+
+def matches_entity(item: ImageResult, entity_term: str) -> bool:
+    hay = f"{item.title_or_alt} {item.page_url} {item.image_url} {item.source_name}".lower()
+    if re.search(rf"\b{re.escape(entity_term)}\b", hay):
+        return True
+    return entity_term in hay
 
 
 def to_json_dict(output: SearchOutput) -> dict:
