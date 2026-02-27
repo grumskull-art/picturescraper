@@ -1,12 +1,11 @@
 # PictureScraper
 
-Image search app that analyzes a free-text query, expands keywords, searches Openverse and optionally Flickr, deduplicates results, and returns reasoning + structured JSON.
+Image search app that analyzes a free-text query, expands keywords, searches Openverse, deduplicates results, and returns reasoning + structured JSON.
 
 ## Features
 - Query analysis: entities + year or year-range extraction
-- Multi-source search:
+- Source search:
   - Openverse (no API key)
-  - Flickr (if `FLICKR_API_KEY` is provided)
 - Deduplication and basic quality ranking
 - Two interfaces:
   - REST API (`FastAPI`)
@@ -21,8 +20,6 @@ source .venv/bin/activate
 pip install -e .[dev]
 cp .env.example .env
 ```
-
-Fill `.env` with your Flickr credentials if you want Flickr results.
 
 ## Run API
 
@@ -58,7 +55,7 @@ PYTHONPATH=src python -m picturescraper.cli "Copacabana Skagen 1995-2005" --pret
       "image_url": "...",
       "page_url": "...",
       "title_or_alt": "...",
-      "source_name": "Openverse|Flickr",
+      "source_name": "Openverse",
       "date_if_available": "...",
       "license": "..."
     }

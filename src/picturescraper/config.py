@@ -11,8 +11,6 @@ load_dotenv()
 
 @dataclass(frozen=True)
 class Settings:
-    flickr_api_key: str | None = os.getenv("FLICKR_API_KEY")
-    flickr_api_secret: str | None = os.getenv("FLICKR_API_SECRET")
     openverse_endpoint: str = os.getenv(
         "OPENVERSE_ENDPOINT", "https://api.openverse.org/v1/images/"
     )

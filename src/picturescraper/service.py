@@ -13,25 +13,13 @@ class ImageClient(Protocol):
         ...
 
 
-class FlickrLikeClient(Protocol):
-    def search_images(
-        self,
-        keyword: str,
-        per_keyword_limit: int = 10,
-        date_range: tuple[int, int] | None = None,
-    ) -> list[ImageResult]:
-        ...
-
-
 class PictureSearchService:
     def __init__(
         self,
         openverse_client: ImageClient,
-        flickr_client: FlickrLikeClient | None = None,
         max_year_span: int = 15,
     ):
         self.openverse_client = openverse_client
-        self.flickr_client = flickr_client
         self.max_year_span = max_year_span
 
     def search(self, query: str, limit: int = 10, per_keyword_limit: int = 8) -> SearchOutput:
@@ -50,16 +38,6 @@ class PictureSearchService:
             if ov_results and "Openverse" not in used_sources:
                 used_sources.append("Openverse")
             all_results.extend(ov_results)
-
-            if self.flickr_client is not None:
-                fk_results = self.flickr_client.search_images(
-                    keyword,
-                    per_keyword_limit=per_keyword_limit,
-                    date_range=analysis.date_range,
-                )
-                if fk_results and "Flickr" not in used_sources:
-                    used_sources.append("Flickr")
-                all_results.extend(fk_results)
 
         filtered = filter_and_deduplicate(all_results)
         ranked = sort_by_quality(filtered)

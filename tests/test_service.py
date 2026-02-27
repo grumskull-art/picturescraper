@@ -14,18 +14,12 @@ class FakeOpenverse:
                 license="CC BY",
                 width=640,
                 height=480,
-            )
-        ]
-
-
-class FakeFlickr:
-    def search_images(self, keyword: str, per_keyword_limit: int = 10, date_range=None):
-        return [
+            ),
             ImageResult(
                 image_url="https://img.example.com/a.jpg?foo=2",
-                page_url="https://flickr.com/photos/x/1",
+                page_url="https://example.com/a-dup",
                 title_or_alt="",
-                source_name="Flickr",
+                source_name="Openverse",
                 date_if_available="",
                 license="CC BY",
                 width=0,
@@ -33,9 +27,9 @@ class FakeFlickr:
             ),
             ImageResult(
                 image_url="https://img.example.com/b.jpg",
-                page_url="https://flickr.com/photos/x/2",
+                page_url="https://example.com/b",
                 title_or_alt="B",
-                source_name="Flickr",
+                source_name="Openverse",
                 date_if_available="2001",
                 license="CC BY-SA",
                 width=1200,
@@ -45,7 +39,7 @@ class FakeFlickr:
 
 
 def test_service_deduplicates_and_ranks() -> None:
-    service = PictureSearchService(openverse_client=FakeOpenverse(), flickr_client=FakeFlickr())
+    service = PictureSearchService(openverse_client=FakeOpenverse())
     out = service.search("Copacabana 1999", limit=10)
 
     assert isinstance(out.results, list)

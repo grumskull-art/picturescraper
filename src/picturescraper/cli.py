@@ -3,14 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 
-from picturescraper.clients.flickr import FlickrClient
 from picturescraper.clients.openverse import OpenverseClient
 from picturescraper.config import settings
 from picturescraper.service import PictureSearchService, to_json_dict
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Search images from Openverse and Flickr")
+    parser = argparse.ArgumentParser(description="Search images from Openverse")
     parser.add_argument("query", nargs="?", help="Search query text")
     parser.add_argument("--limit", type=int, default=10, help="Maximum results to return")
     parser.add_argument(
@@ -28,15 +27,7 @@ def main() -> None:
         endpoint=settings.openverse_endpoint,
         timeout_seconds=settings.request_timeout_seconds,
     )
-    flickr = None
-    if settings.flickr_api_key:
-        flickr = FlickrClient(
-            api_key=settings.flickr_api_key,
-            api_secret=settings.flickr_api_secret,
-            timeout_seconds=settings.request_timeout_seconds,
-        )
-
-    service = PictureSearchService(openverse_client=openverse, flickr_client=flickr)
+    service = PictureSearchService(openverse_client=openverse)
     result = service.search(query, limit=args.limit)
     output = to_json_dict(result)
     if args.pretty:

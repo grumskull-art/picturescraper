@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Query
 
-from picturescraper.clients.flickr import FlickrClient
 from picturescraper.clients.openverse import OpenverseClient
 from picturescraper.config import settings
 from picturescraper.service import PictureSearchService, to_json_dict
@@ -15,14 +14,7 @@ def build_service() -> PictureSearchService:
         endpoint=settings.openverse_endpoint,
         timeout_seconds=settings.request_timeout_seconds,
     )
-    flickr = None
-    if settings.flickr_api_key:
-        flickr = FlickrClient(
-            api_key=settings.flickr_api_key,
-            api_secret=settings.flickr_api_secret,
-            timeout_seconds=settings.request_timeout_seconds,
-        )
-    return PictureSearchService(openverse_client=openverse, flickr_client=flickr)
+    return PictureSearchService(openverse_client=openverse)
 
 
 @app.get("/health")
