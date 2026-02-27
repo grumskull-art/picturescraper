@@ -10,12 +10,24 @@ class OpenverseClient:
         self.endpoint = endpoint
         self.timeout_seconds = timeout_seconds
 
-    def search_images(self, keyword: str, per_keyword_limit: int = 10) -> list[ImageResult]:
+    def search_images(
+        self,
+        keyword: str,
+        per_keyword_limit: int = 10,
+        page: int = 1,
+        license_code: str | None = None,
+        source: str | None = None,
+    ) -> list[ImageResult]:
         params = {
             "q": keyword,
             "page_size": per_keyword_limit,
             "license_type": "all",
+            "page": page,
         }
+        if license_code:
+            params["license"] = license_code
+        if source:
+            params["source"] = source
         response = requests.get(self.endpoint, params=params, timeout=self.timeout_seconds)
         if not response.ok:
             return []

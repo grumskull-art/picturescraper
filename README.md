@@ -4,12 +4,16 @@ Image search app that analyzes a free-text query, expands keywords, searches Ope
 
 ## Features
 - Query analysis: entities + year or year-range extraction
-- Source search:
-  - Openverse (no API key)
-- Deduplication and basic quality ranking
+- Openverse search with advanced filters:
+  - `license` substring filter
+  - `source` substring filter
+  - `orientation` (`landscape|portrait|square`)
+- Pagination support for infinite scroll UX
+- Export current results as JSON or CSV
+- Save and reload collections locally (`data/collections.json` by default)
 - Two interfaces:
-  - REST API (`FastAPI`)
   - Browser UI (`/`)
+  - REST API (`FastAPI`)
   - CLI tool
 - Automated tests (`pytest`)
 
@@ -43,7 +47,7 @@ curl http://127.0.0.1:8000/health
 Search:
 
 ```bash
-curl 'http://127.0.0.1:8000/search?q=Copacabana%20Skagen%201995-2005&limit=10'
+curl 'http://127.0.0.1:8000/search?q=Copacabana%20Skagen%201995-2005&limit=12&page=1&orientation=landscape&source=wikimedia'
 ```
 
 ## Run CLI
@@ -52,7 +56,7 @@ curl 'http://127.0.0.1:8000/search?q=Copacabana%20Skagen%201995-2005&limit=10'
 PYTHONPATH=src python -m picturescraper.cli "Copacabana Skagen 1995-2005" --pretty
 ```
 
-## Output format
+## API output format
 
 ```json
 {
@@ -62,11 +66,19 @@ PYTHONPATH=src python -m picturescraper.cli "Copacabana Skagen 1995-2005" --pret
       "image_url": "...",
       "page_url": "...",
       "title_or_alt": "...",
-      "source_name": "Openverse",
+      "source_name": "Openverse source",
       "date_if_available": "...",
-      "license": "..."
+      "license": "...",
+      "width": 1024,
+      "height": 768
     }
-  ]
+  ],
+  "page": 1,
+  "limit": 12,
+  "count": 12,
+  "total_results": 104,
+  "has_more": true,
+  "next_page": 2
 }
 ```
 

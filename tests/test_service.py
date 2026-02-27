@@ -1,17 +1,38 @@
-from picturescraper.models import ImageResult
+from picturescraper.models import ImageResult, SearchFilters
 from picturescraper.service import PictureSearchService
 
 
 class FakeOpenverse:
-    def search_images(self, keyword: str, per_keyword_limit: int = 10):
+    def search_images(
+        self,
+        keyword: str,
+        per_keyword_limit: int = 10,
+        page: int = 1,
+        license_code: str | None = None,
+        source: str | None = None,
+    ):
+        if page > 1:
+            return [
+                ImageResult(
+                    image_url="https://img.example.com/c.jpg",
+                    page_url="https://example.com/c",
+                    title_or_alt="C",
+                    source_name="wikimedia",
+                    date_if_available="2002",
+                    license="by",
+                    width=1600,
+                    height=900,
+                )
+            ]
+
         return [
             ImageResult(
                 image_url="https://img.example.com/a.jpg?foo=1",
                 page_url="https://example.com/a",
                 title_or_alt="A",
-                source_name="Openverse",
+                source_name="flickr",
                 date_if_available="1999",
-                license="CC BY",
+                license="by",
                 width=640,
                 height=480,
             ),
@@ -19,9 +40,9 @@ class FakeOpenverse:
                 image_url="https://img.example.com/a.jpg?foo=2",
                 page_url="https://example.com/a-dup",
                 title_or_alt="",
-                source_name="Openverse",
+                source_name="flickr",
                 date_if_available="",
-                license="CC BY",
+                license="by",
                 width=0,
                 height=0,
             ),
@@ -29,9 +50,9 @@ class FakeOpenverse:
                 image_url="https://img.example.com/b.jpg",
                 page_url="https://example.com/b",
                 title_or_alt="B",
-                source_name="Openverse",
+                source_name="wikimedia",
                 date_if_available="2001",
-                license="CC BY-SA",
+                license="by-sa",
                 width=1200,
                 height=900,
             ),
@@ -46,3 +67,18 @@ def test_service_deduplicates_and_ranks() -> None:
     assert len(out.results) == 2
     assert out.results[0].image_url == "https://img.example.com/b.jpg"
     assert "Deduplicated by URL" in out.reasoning_steps
+
+
+def test_service_applies_filters_and_pagination() -> None:
+    service = PictureSearchService(openverse_client=FakeOpenverse())
+    out = service.search(
+        "Copacabana 1999",
+        limit=1,
+        page=2,
+        filters=SearchFilters(source="wikimedia", orientation="landscape"),
+    )
+
+    assert isinstance(out.results, list)
+    assert len(out.results) == 1
+    assert out.results[0].image_url == "https://img.example.com/b.jpg"
+    assert out.total_results == 2

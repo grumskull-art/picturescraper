@@ -23,6 +23,17 @@ class ImageResult:
 
 
 @dataclass(frozen=True)
+class SearchFilters:
+    license: str | None = None
+    source: str | None = None
+    orientation: str | None = None
+
+
+@dataclass(frozen=True)
 class SearchOutput:
     reasoning_steps: str
     results: list[ImageResult] | str
+    page: int = 1
+    limit: int = 10
+    total_results: int = 0
+    has_more: bool = False

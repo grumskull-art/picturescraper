@@ -16,6 +16,7 @@ class Settings:
     )
     request_timeout_seconds: float = float(os.getenv("REQUEST_TIMEOUT_SECONDS", "10"))
     max_year_span: int = int(os.getenv("MAX_YEAR_SPAN", "15"))
+    collections_path: str = os.getenv("COLLECTIONS_PATH", "data/collections.json")
 
 
 settings = Settings()

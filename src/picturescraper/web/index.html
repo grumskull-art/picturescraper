@@ -13,14 +13,13 @@
         <p class="eyebrow">PictureScraper</p>
         <h1>Search The Open Web For Images</h1>
         <p class="subtitle">
-          Type a query with optional year or range like <code>Skagen 1995-2005</code>.
-          The app analyzes the query, finds images, and ranks useful matches.
+          Pro image discovery with live filters, infinite scroll, exports, and saved collections.
         </p>
       </header>
 
       <section class="search-panel" aria-label="Search panel">
         <form id="search-form" class="search-form">
-          <label class="field-wrap">
+          <label class="field-wrap query-field">
             <span>Search query</span>
             <input
               id="query"
@@ -34,17 +33,55 @@
           </label>
 
           <label class="field-wrap short">
-            <span>Results</span>
+            <span>Results / page</span>
             <input id="limit" name="limit" type="number" min="1" max="50" value="12" />
+          </label>
+
+          <label class="field-wrap short">
+            <span>Orientation</span>
+            <select id="orientation" name="orientation">
+              <option value="">Any</option>
+              <option value="landscape">Landscape</option>
+              <option value="portrait">Portrait</option>
+              <option value="square">Square</option>
+            </select>
+          </label>
+
+          <label class="field-wrap short">
+            <span>License contains</span>
+            <input id="license" name="license" type="text" placeholder="e.g. by-sa" />
+          </label>
+
+          <label class="field-wrap short">
+            <span>Source contains</span>
+            <input id="source" name="source" type="text" placeholder="e.g. wikimedia" />
           </label>
 
           <button id="search-button" type="submit">Find Images</button>
         </form>
       </section>
 
+      <section class="actions-row">
+        <button type="button" id="export-json" class="alt">Export JSON</button>
+        <button type="button" id="export-csv" class="alt">Export CSV</button>
+        <button type="button" id="save-collection" class="alt">Save Collection</button>
+      </section>
+
       <section id="reasoning" class="reasoning hidden" aria-live="polite"></section>
       <section id="status" class="status" aria-live="polite"></section>
-      <section id="gallery" class="gallery" aria-label="Image results"></section>
+
+      <section class="content-grid">
+        <section>
+          <section id="gallery" class="gallery" aria-label="Image results"></section>
+          <div id="scroll-sentinel" class="scroll-sentinel">Load more</div>
+        </section>
+
+        <aside class="collections-panel" aria-label="Saved collections">
+          <h2>Collections</h2>
+          <p class="panel-sub">Saved locally on this machine.</p>
+          <ul id="collections-list" class="collections-list"></ul>
+        </aside>
+      </section>
     </main>
 
     <template id="card-template">
@@ -53,10 +90,11 @@
           <img class="thumb" loading="lazy" alt="" />
         </a>
         <div class="meta">
-          <h2 class="title"></h2>
+          <h3 class="title"></h3>
           <p class="chips"></p>
           <p class="links">
             <a class="source-link" target="_blank" rel="noreferrer noopener">Source page</a>
+            <a class="download-link" target="_blank" rel="noreferrer noopener">Download image</a>
           </p>
         </div>
       </article>
