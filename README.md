@@ -9,6 +9,7 @@ Image search app that analyzes a free-text query, expands keywords, searches Ope
 - Deduplication and basic quality ranking
 - Two interfaces:
   - REST API (`FastAPI`)
+  - Browser UI (`/`)
   - CLI tool
 - Automated tests (`pytest`)
 
@@ -25,6 +26,12 @@ cp .env.example .env
 
 ```bash
 uvicorn picturescraper.api:app --reload --app-dir src
+```
+
+Web app:
+
+```bash
+open http://127.0.0.1:8000/
 ```
 
 Health check:

@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from picturescraper.clients.openverse import OpenverseClient
 from picturescraper.config import settings
 from picturescraper.service import PictureSearchService, to_json_dict
 
 app = FastAPI(title="Picture Scraper", version="0.1.0")
+WEB_DIR = Path(__file__).resolve().parent / "web"
+app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
 
 
 def build_service() -> PictureSearchService:
@@ -15,6 +21,11 @@ def build_service() -> PictureSearchService:
         timeout_seconds=settings.request_timeout_seconds,
     )
     return PictureSearchService(openverse_client=openverse)
+
+
+@app.get("/")
+def web_app() -> FileResponse:
+    return FileResponse(WEB_DIR / "index.html")
 
 
 @app.get("/health")

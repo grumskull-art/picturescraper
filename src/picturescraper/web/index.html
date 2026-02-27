@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PictureScraper</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="bg-layer" aria-hidden="true"></div>
+    <main class="app-shell">
+      <header class="hero">
+        <p class="eyebrow">PictureScraper</p>
+        <h1>Search The Open Web For Images</h1>
+        <p class="subtitle">
+          Type a query with optional year or range like <code>Skagen 1995-2005</code>.
+          The app analyzes the query, finds images, and ranks useful matches.
+        </p>
+      </header>
+
+      <section class="search-panel" aria-label="Search panel">
+        <form id="search-form" class="search-form">
+          <label class="field-wrap">
+            <span>Search query</span>
+            <input
+              id="query"
+              name="query"
+              type="text"
+              minlength="2"
+              required
+              placeholder="e.g. northern lights norway 2018-2020"
+              autocomplete="off"
+            />
+          </label>
+
+          <label class="field-wrap short">
+            <span>Results</span>
+            <input id="limit" name="limit" type="number" min="1" max="50" value="12" />
+          </label>
+
+          <button id="search-button" type="submit">Find Images</button>
+        </form>
+      </section>
+
+      <section id="reasoning" class="reasoning hidden" aria-live="polite"></section>
+      <section id="status" class="status" aria-live="polite"></section>
+      <section id="gallery" class="gallery" aria-label="Image results"></section>
+    </main>
+
+    <template id="card-template">
+      <article class="card">
+        <a class="image-link" target="_blank" rel="noreferrer noopener">
+          <img class="thumb" loading="lazy" alt="" />
+        </a>
+        <div class="meta">
+          <h2 class="title"></h2>
+          <p class="chips"></p>
+          <p class="links">
+            <a class="source-link" target="_blank" rel="noreferrer noopener">Source page</a>
+          </p>
+        </div>
+      </article>
+    </template>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
